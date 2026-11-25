@@ -12,6 +12,30 @@ namespace Api.Controllers;
 [Route("rooms")]
 public sealed class RoomsController(ISender sender, IRoomQueries queries) : ControllerBase
 {
+    [HttpPost("filter")]
+    public async Task<ActionResult<IReadOnlyList<RoomDto>>> FilterRooms(SearchRoomDto request,
+        CancellationToken cancellationToken)
+    {
+        RoomType? type = null;
+        if (request.Type is not null)
+        {
+            if (!Enum.TryParse<RoomType>(request.Type, true, out var parsed) || !Enum.IsDefined(parsed))
+                return BadRequest("Unknown room type.");
+            type = parsed;
+        }
+        var rooms = await queries.Filter(request.Number, request.FloorFrom, request.FloorTo,
+            request.PricePerNightFrom, request.PricePerNightTo, type, request.IsAvailable,
+            AsUtc(request.CreatedAtFrom), AsUtc(request.CreatedAtTo), cancellationToken);
+        return Ok(rooms.Select(RoomDto.FromDomainModel).ToArray());
+    }
+
+    private static DateTime? AsUtc(DateTime? value) => value?.Kind switch
+    {
+        DateTimeKind.Unspecified => DateTime.SpecifyKind(value.Value, DateTimeKind.Utc),
+        DateTimeKind.Local => value.Value.ToUniversalTime(),
+        _ => value
+    };
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<RoomDto>>> GetRooms(CancellationToken cancellationToken) =>
         (await queries.GetAll(cancellationToken)).Select(RoomDto.FromDomainModel).ToArray();

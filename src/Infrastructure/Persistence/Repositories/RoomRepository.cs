@@ -9,6 +9,30 @@ namespace Infrastructure.Persistence.Repositories;
 
 public sealed class RoomRepository(ApplicationDbContext context) : IRoomRepository, IRoomQueries
 {
+    public async Task<IReadOnlyList<Room>> Filter(string? number, int? floorFrom, int? floorTo,
+        decimal? pricePerNightFrom, decimal? pricePerNightTo, RoomType? type,
+        bool? isAvailable, DateTime? createdAtFrom, DateTime? createdAtTo,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<Room> query = context.Rooms.AsNoTracking();
+        if (number is not null)
+        {
+            // Treat SQL LIKE wildcards as literal characters entered by the user.
+            var pattern = "%" + number.Replace("\\", "\\\\").Replace("%", "\\%")
+                .Replace("_", "\\_") + "%";
+            query = query.Where(room => EF.Functions.ILike(room.Number, pattern, "\\"));
+        }
+        if (floorFrom.HasValue) query = query.Where(room => room.Floor >= floorFrom.Value);
+        if (floorTo.HasValue) query = query.Where(room => room.Floor <= floorTo.Value);
+        if (pricePerNightFrom.HasValue) query = query.Where(room => room.PricePerNight >= pricePerNightFrom.Value);
+        if (pricePerNightTo.HasValue) query = query.Where(room => room.PricePerNight <= pricePerNightTo.Value);
+        if (type.HasValue) query = query.Where(room => room.Type == type.Value);
+        if (isAvailable.HasValue) query = query.Where(room => room.IsAvailable == isAvailable.Value);
+        if (createdAtFrom.HasValue) query = query.Where(room => room.CreatedAt >= createdAtFrom.Value);
+        if (createdAtTo.HasValue) query = query.Where(room => room.CreatedAt <= createdAtTo.Value);
+        return await query.OrderBy(room => room.Number).ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Room>> GetAll(CancellationToken cancellationToken) =>
         await context.Rooms.AsNoTracking().OrderBy(x => x.Number).ToListAsync(cancellationToken);
 

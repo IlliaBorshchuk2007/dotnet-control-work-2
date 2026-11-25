@@ -1,6 +1,26 @@
 @baseUrl = http://localhost:5080
 @roomId = 00000000-0000-0000-0000-000000000000
 
+### Filter rooms (all parameters are optional)
+POST {{baseUrl}}/rooms/filter
+Content-Type: application/json
+
+{
+  "number": "10",
+  "floorFrom": 1,
+  "floorTo": 3,
+  "pricePerNightTo": 2500,
+  "type": "Deluxe",
+  "isAvailable": false,
+  "createdAtFrom": "2026-01-01T00:00:00Z"
+}
+
+### Empty filter returns all rooms
+POST {{baseUrl}}/rooms/filter
+Content-Type: application/json
+
+{}
+
 ### List rooms
 GET {{baseUrl}}/rooms
 Accept: application/json
